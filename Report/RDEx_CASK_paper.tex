@@ -204,15 +204,6 @@ Algorithm~\ref{alg:rdex-cask} summarises RDEx-CASK.
 \end{algorithmic}
 \end{algorithm}
 
-% \section{Implementation Notes}
-% The reference implementation is \texttt{rdex\_exp217.cpp}. Configuration values are
-% \begin{align*}
-% H &= 10, &\quad SG &= 180, &\quad p_{arch}^{floor} &= 0.65, \\
-% CR_{sat} &= 0.95, &\quad SR_{th} &= 0.10, &\quad \rho_{EB}^{(0)} &= 0.5, \\
-% |\mathcal{A}|_{\max} &= 50, &\quad N_0 &= 10D, &\quad N_{\min} &= 4.
-% \end{align*}
-% The seed protocol uses a wall-clock seed by default \&a CLI-provided seed for reproducibility. Each $(\text{run}, \text{function})$ pair is reseeded as $\text{base\_seed} + 1000\cdot\text{run} + 7\cdot\text{func}$. Per-run runtime is unchanged within noise compared with RDEx.
-
 \section{Experimental Results}
 \label{sec:exp}
 
@@ -269,7 +260,7 @@ Table~\ref{tab:ttt} reports time-to-target (TTT) for each algorithm. TTT is the 
 
 \begin{table*}[!t]
 \centering
-\caption{Time-to-target (TTT) on the 28 CEC 2025 CSOP functions, $D = 30$, 25 runs per function. RDEx, UDE-III, \& CL-SRDE values are reproduced from Table VI of \cite{tao2026rdex}. $2001$ means the target was never reached.}
+\caption{Time-to-target (TTT) on the 28 CEC 2025 CSOP functions, $D = 30$, 25 runs per function. RDEx, UDE-III, \& CL-SRDE values are taken from \cite{tao2026rdex}. $2001$ means the target was never reached.}
 \label{tab:ttt}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
