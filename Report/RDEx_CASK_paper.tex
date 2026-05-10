@@ -68,7 +68,7 @@ In RDEx, $F_2$ is reused from $F$, so the two difference components are perfectl
 F_{2,i}^{(g)} \sim \mathrm{Cauchy}\bigl(\mu_F^{(g)}, 0.1\bigr) \cap [0,1],
 \label{eq:F2}
 \end{equation}
-where $\mu_F^{(g)}$ is the centre of (\ref{eq:meanF}). The reason for picking Cauchy over Normal is the heavier tail: most draws stay near the centre, but a small fraction produce large component wise jumps, which helps escape local plateaus without permanently inflating the search variance. We tested Normal($\mu_F$, $0.1$) instead and the result was a clear regression on the speed score, which confirms the heavy tail is the load-bearing piece. We also tried scales $0.05$ \& $0.20$; both were worse than $0.10$.
+where $\mu_F^{(g)}$ is the centre of (\ref{eq:meanF}). The reason for picking Cauchy over Normal is the heavier tail: most draws stay near the centre, but a small fraction produce large component wise jumps, which helps escape local plateaus without permanently inflating the search variance. We tested Normal($\mu_F$, $0.1$) instead and the result was a clear regression on the speed score, which confirms the heavy tail is the main contributing factor. We also tried scales $0.05$ \& $0.20$; both were worse than $0.10$.
 
 \subsection{JADE-Style External Archive}
 \label{sec:archive}
@@ -86,11 +86,11 @@ with
 p_{arch} = \frac{|\mathcal{A}|}{|\mathcal{A}| + |P|}.
 \label{eq:parch}
 \end{equation}
-The feasibility gate is important: an early experiment without it (push every displaced parent regardless of $\phi$) broke F06 entirely \& dragged F07 by a wide margin. Because the early phase displaced parents are mostly infeasible, \& mixing them into difference vector pulls the trial off the feasibility manifold. The capacity $|\mathcal{A}|_{\max} = 50$ was picked after a sweep over $\{20, 30, 50, 100, 300\}$: smaller caps starve the rare-but-useful diversity injection on rotated/composition problems, while larger caps keep stale early-phase solutions that hurt late-phase exploitation.
+The feasibility gate is important: an early experiment without it (push every displaced parent regardless of $\phi$) caused severe degradation on F06 \& dragged F07 by a wide margin. Because the early phase displaced parents are mostly infeasible, \& mixing them into difference vector pulls the trial off the feasibility manifold. The capacity $|\mathcal{A}|_{\max} = 50$ was picked after a sweep over $\{20, 30, 50, 100, 300\}$: smaller caps starve the rare-but-useful diversity injection on rotated/composition problems, while larger caps keep stale early-phase solutions that hurt late-phase exploitation.
 
 \subsection{Per-Individual Stagnation Kick}
 \label{sec:psk}
-A diagnostic over $10$ seeds showed that on many CSOP problems the front sits idle for the second half of the budget, where individuals rarely contribute an accepted trial. Two design choices follow from this. We avoided \cite{trivedi2024ude} replacement scheme (replace a stagnated individual by a vector drawn from a separate archive of unsuccessful trials \cite{trivedi2024ude}) because it erases the in-flight $(F, CR)$ history of that individual \& violates the rank coherence used by the $p$-best donor sampling. Instead, we kept the stagnated individual in place \& only modified its mutation kernel for one generation. For each front member $i$ we maintain an integer stagnation counter $\sigma_i$:
+A diagnostic over $10$ seeds showed that on many CSOP problems the the population experiences prolonged stagnation for the second half of the budget, where individuals rarely contribute an accepted trial. Two design choices follow from this. We avoided \cite{trivedi2024ude} replacement scheme (replace a stagnated individual by a vector drawn from a separate archive of unsuccessful trials \cite{trivedi2024ude}) because it erases the in-flight $(F, CR)$ history of that individual \& violates the rank coherence used by the $p$-best donor sampling. Instead, we kept the stagnated individual in place \& only modified its mutation kernel for one generation. For each front member $i$ we maintain an integer stagnation counter $\sigma_i$:
 \begin{equation}
 \sigma_i^{(g+1)} =
 \begin{cases}
@@ -99,7 +99,7 @@ A diagnostic over $10$ seeds showed that on many CSOP problems the front sits id
 \end{cases}
 \label{eq:counter}
 \end{equation}
-Individual $i$ is stagnated at generation $g$ when $\sigma_i^{(g)} \ge SG$, with $SG = 180$. The counter travels with $i$ through linear front reduction so that removing the worst member also removes its history. We picked $SG = 180$ after sweeping over $\{60, 100, 120, 150, 180, 200, 220, 240\}$; smaller thresholds fired the override too often \& destroyed accuracy, larger thresholds barely fired \& gave back the speed gain.
+Individual $i$ is stagnated at generation $g$ when $\sigma_i^{(g)} \ge SG$, with $SG = 180$. The counter travels with $i$ through linear front reduction so that removing the worst member also removes its history. We picked $SG = 180$ after sweeping over $\{60, 100, 120, 150, 180, 200, 220, 240\}$; smaller thresholds fired the override too often \& destroyed accuracy, larger thresholds barely fired \& removed most of the observed speed improvement.
 
 \paragraph*{S1: Global-best substitution}
 For stagnated $i$, the standard branch replaces the $p$-best donor by the running global best $x^{*}$:
