@@ -9,6 +9,8 @@
 \usepackage{cite}
 \usepackage{array}
 \usepackage{xcolor}
+\usepackage{bm}
+\usepackage{url}
 
 \title{RDEx-CASK: Cauchy Mutation, Archive, and Stagnation Kick for RDEx-CSOP}
 
@@ -49,7 +51,7 @@ Let $\mathcal{F}^{(g)} = \{x_i^{(g)}\}_{i=1}^{N^{(g)}}$ denote the front populat
 v_i^{(g)} = x_i^{(g)} + F_i^{(g)}\!\big(x_{pbest}^{(g)} - x_i^{(g)}\big) + F_{2,i}^{(g)}\!\big(x_{r_1}^{(g)} - x_{r_2}^{(g)}\big),
 \label{eq:std}
 \end{equation}
-where $x_{r_1}$ is sampled from front with an exponential rank bias \&$x_{r_2}$ is sampled from current population. The EB branch uses three fitness ordered donors,
+where $x_{r_1}$ is sampled from front with an exponential rank bias \& $x_{r_2}$ is sampled from current population. The EB branch uses three fitness ordered donors,
 \begin{equation}
 v_i^{(g)} = x_i^{(g)} + F_i^{(g)}\!\big(x_{best}^{(g)} - x_i^{(g)}\big) + F_i^{(g)}\!\big(x_{mid}^{(g)} - x_{worst}^{(g)}\big),
 \label{eq:eb}
@@ -57,7 +59,7 @@ v_i^{(g)} = x_i^{(g)} + F_i^{(g)}\!\big(x_{best}^{(g)} - x_i^{(g)}\big) + F_i^{(
 \& is selected with a hybrid rate $\rho_{EB}^{(g)}$. Selection follows the $\epsilon$-rule of (9) in \cite{tao2026rdex}. The standard branch in baseline RDEx sets $F_2 = F$, samples $F$ from $\mathcal{N}\!\bigl(\max(0,(SR^{(g)})^{1/3}), 0.05^2\bigr)$, \& applies a Cauchy perturbation on non-crossover coordinates with probability $0.2$. The EB rate update sets $\rho_{EB}^{(g+1)}$ to raw improvement-share ratio when both branches contribute \& resets to $0.7$ otherwise.
 
 \section{Proposed Variant: RDEx-CASK}
-RDEx-CASK preserves (\ref{eq:eb}), the bound repair rule, the linear front reduction, the $\epsilon$-rule, \&the SHADE style memory bookkeeping. The changes are grouped into three structural modifications (Sections~\ref{sec:cauchy}, \ref{sec:archive}, \ref{sec:psk}) \& a set of parameter fine-tunings (Section~\ref{sec:fine-tunings}).
+RDEx-CASK preserves (\ref{eq:eb}), the bound repair rule, the linear front reduction, the $\epsilon$-rule, \& the SHADE style memory bookkeeping. The changes are grouped into three structural modifications (Sections~\ref{sec:cauchy}, \ref{sec:archive}, \ref{sec:psk}) \& a set of parameter fine-tunings (Section~\ref{sec:fine-tunings}).
 
 \subsection{Independent Cauchy Second Scale Factor}
 \label{sec:cauchy}
@@ -161,12 +163,34 @@ Let $\tilde{\rho}^{(g+1)}_{EB}$ be the raw improvement-share ratio of \cite{tao2
 clipped to $[0,1]$. The first branch of (\ref{eq:rho-update}) replaces the raw ratio. The second branch replaces a hard reset.
 
 \subsection{Scope of the Change}
-The structural modifications \&overrides apply only to the standard branch of the chosen target $i$. The EB branch (\ref{eq:eb}), the success-history memories, the bound repair, the front reduction, the $\epsilon$-ranking, \& the archive update rule are unchanged. The hybrid rate update of (\ref{eq:rho-update}) is unaffected by the stagnation kick.
+The structural modifications \& overrides apply only to the standard branch of the chosen target $i$. The EB branch (\ref{eq:eb}), the success-history memories, the bound repair, the front reduction, the $\epsilon$-ranking, \& the archive update rule are unchanged. The hybrid rate update of (\ref{eq:rho-update}) is unaffected by the stagnation kick.
+
+\subsection{Component Summary}
+Table~\ref{tab:components} groups the changes by their structural role.
+
+\begin{table}[!t]
+\centering
+\caption{RDEx-CASK changes grouped by component.}
+\label{tab:components}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.16\columnwidth} >{\raggedright\arraybackslash}p{0.30\columnwidth} >{\raggedright\arraybackslash}p{0.22\columnwidth} >{\raggedright\arraybackslash}p{0.22\columnwidth}@{}}
+\toprule
+Component & Modification & Main Purpose & Expected Effect \\
+\midrule
+Cauchy $F_2$ (Sec.~\ref{sec:cauchy}) & Decouple $F_2$ from $F$; truncated $\mathrm{Cauchy}(\mu_F,\,0.1)\cap[0,1]$ & Heavy-tailed donor scale to escape plateaus & Faster speed score on plateau-prone runs \\
+JADE archive (Sec.~\ref{sec:archive}) & Feasible-only circular archive, $|\mathcal{A}|_{\max}{=}50$, $p_{arch}{=}|\mathcal{A}|/(|\mathcal{A}|{+}|P|)$ & Inject feasible-history diversity into difference vector & Better late-phase exploration without leaving feasibility manifold \\
+Stagnation kick (Sec.~\ref{sec:psk}) & Per-individual $\sigma_i \ge 180$ triggers global-best pull, $p_{arch}{\ge}0.65$, $CR{=}0.95$ when $SR{<}0.10$ & Local override on stalled targets without erasing memories & Restart progress for idle individuals; SR-gated to avoid late-phase damage \\
+Param tuning (Sec.~\ref{sec:fine-tunings}) & $H{=}10$; $\mu_F{=}(SR)^{2/5}$; perturb off; $\rho_{EB}^{(0)}{=}0.5$; smoothed $\rho_{EB}$ & Robust replacements for an updated benchmark cycle & Stable speed gains across all problems \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Algorithm}
 Algorithm~\ref{alg:rdex-cask} summarises RDEx-CASK.
 
-\begin{algorithm}[!t]
+\begin{algorithm}[!ht]
 \caption{RDEx-CASK}
 \label{alg:rdex-cask}
 \begin{algorithmic}[1]
@@ -181,7 +205,7 @@ Algorithm~\ref{alg:rdex-cask} summarises RDEx-CASK.
         \If{standard branch}
             \State Compute $p_{arch}$ via (\ref{eq:parch}); apply floor (\ref{eq:override2}) if $\sigma_i \ge SG$
             \State Sample $\tilde{x}_{r_2}$ from $P$ or $\mathcal{A}$ using $p_{arch}$
-            \If{$\sigma_i \ge SG$ \&$SR^{(g-1)} < 0.10$}
+            \If{$\sigma_i \ge SG$ \& $SR^{(g-1)} < 0.10$}
                 \State $CR_i \gets \max(CR_i, 0.95)$
             \EndIf
             \State Pick $x_{base}$: $x^{*}$ if $\sigma_i \ge SG$ else $x_{pbest}$
@@ -189,7 +213,7 @@ Algorithm~\ref{alg:rdex-cask} summarises RDEx-CASK.
         \Else
             \State Generate $v_i$ from (\ref{eq:eb})
         \EndIf
-        \State Apply binomial crossover \&bound repair
+        \State Apply binomial crossover \& bound repair
         \State Non-crossover coordinate keeps target value (\ref{eq:noperturb})
         \State Evaluate trial; apply $\epsilon$-rule selection
         \If{trial accepted}
@@ -210,14 +234,14 @@ Algorithm~\ref{alg:rdex-cask} summarises RDEx-CASK.
 \label{sec:exp}
 
 \subsection{Protocol}
-Benchmark is the CEC CSOP track (28 constrained problems, $D = 30$, $\text{MaxFE} = 20000\,D$). RDEx-CASK is run for 25 independent runs per function. Reported means \&standard deviations of the feasibility-aware quality $Q_p$ follow the definition of (18) in \cite{tao2026rdex}: $Q_p(x) = f(x)$ if the run is feasible at the final FE, otherwise $Q_p(x) = B_p + \phi(x)$ with $B_p$ the largest finite final objective on problem $p$ plus one. Results for RDEx, UDE-III, \& CL-SRDE are taken from the released competition runs reported in \cite{tao2026rdex}.
+Benchmark is the CEC CSOP track (28 constrained problems, $D = 30$, $\text{MaxFE} = 20000\,D$). RDEx-CASK is run for 25 independent runs per function. Reported means \& standard deviations of the feasibility-aware quality $Q_p$ follow the definition of (18) in \cite{tao2026rdex}: $Q_p(x) = f(x)$ if the run is feasible at the final FE, otherwise $Q_p(x) = B_p + \phi(x)$ with $B_p$ the largest finite final objective on problem $p$ plus one. Results for RDEx, UDE-III, \& CL-SRDE are taken from the released competition runs reported in \cite{tao2026rdex}.
 
 \subsection{Per-Function $Q_p$ Comparison}
 Table~\ref{tab:qp} reports $Q_p$ means \& standard deviations for the four algorithms across the 28 problems.
 
 \begin{table*}[!t]
 \centering
-\caption{Feasibility-aware final-quality $Q_p$ on CEC CSOP functions, $D = 30$, 25 runs per function. RDEx, UDE-III, \& CL-SRDE values are taken from \cite{tao2026rdex}.}
+\caption{Feasibility-aware final-quality $Q_p$ on CEC CSOP functions, $D = 30$, 25 runs per function. Sources: RDEx-CASK from \cite{cask_results}; RDEx (=RDEx-CSOP), UDE-III, \& CL-SRDE values taken from \cite{tao2026rdex}.}
 \label{tab:qp}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -225,34 +249,34 @@ Table~\ref{tab:qp} reports $Q_p$ means \& standard deviations for the four algor
 \toprule
 F & RDEx-CASK Mean$\pm$SD & RDEx Mean$\pm$SD & UDE-III Mean$\pm$SD & CL-SRDE Mean$\pm$SD \\
 \midrule
-1  & $5.99\mathrm{E}{-}29 \pm 3.21\mathrm{E}{-}29$ & $5.92\mathrm{E}{-}30 \pm 9.27\mathrm{E}{-}30$ & $1.57\mathrm{E}{-}28 \pm 9.70\mathrm{E}{-}29$ & $1.26\mathrm{E}{-}31 \pm 6.18\mathrm{E}{-}31$ \\
-2  & $5.16\mathrm{E}{-}29 \pm 2.64\mathrm{E}{-}29$ & $3.04\mathrm{E}{-}30 \pm 4.86\mathrm{E}{-}30$ & $1.31\mathrm{E}{-}28 \pm 7.83\mathrm{E}{-}29$ & $7.24\mathrm{E}{-}31 \pm 2.42\mathrm{E}{-}30$ \\
-3  & $3.33\mathrm{E}{+}02 \pm 1.96\mathrm{E}{+}02$ & $3.39\mathrm{E}{+}02 \pm 1.63\mathrm{E}{+}02$ & $9.22\mathrm{E}{+}01 \pm 5.54\mathrm{E}{+}01$ & $5.37\mathrm{E}{+}02 \pm 1.07\mathrm{E}{+}02$ \\
-4  & $8.98\mathrm{E}{+}01 \pm 1.36\mathrm{E}{+}01$ & $1.57\mathrm{E}{+}01 \pm 1.45\mathrm{E}{+}00$ & $6.51\mathrm{E}{+}00 \pm 6.78\mathrm{E}{+}00$ & $4.84\mathrm{E}{+}01 \pm 8.86\mathrm{E}{+}00$ \\
-5  & $4.73\mathrm{E}{-}29 \pm 1.10\mathrm{E}{-}28$ & $0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $1.17\mathrm{E}{-}28 \pm 4.17\mathrm{E}{-}28$ & $0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ \\
-6  & $2.63\mathrm{E}{+}00 \pm 1.37\mathrm{E}{+}00$ & $2.29\mathrm{E}{+}00 \pm 1.00\mathrm{E}{+}01$ & $0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $2.87\mathrm{E}{+}00 \pm 1.41\mathrm{E}{+}01$ \\
-7  & $-8.26\mathrm{E}{+}02 \pm 1.58\mathrm{E}{+}02$ & $-8.70\mathrm{E}{+}02 \pm 1.54\mathrm{E}{+}02$ & $-6.73\mathrm{E}{+}02 \pm 1.49\mathrm{E}{+}02$ & $-8.28\mathrm{E}{+}02 \pm 1.80\mathrm{E}{+}02$ \\
-8  & $-2.84\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00$ & $-2.84\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00$ & $-2.84\mathrm{E}{-}04 \pm 5.85\mathrm{E}{-}12$ & $-2.84\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00$ \\
-9  & $-2.67\mathrm{E}{-}03 \pm 0.00\mathrm{E}{+}00$ & $-2.67\mathrm{E}{-}03 \pm 0.00\mathrm{E}{+}00$ & $-2.67\mathrm{E}{-}03 \pm 4.34\mathrm{E}{-}19$ & $-2.67\mathrm{E}{-}03 \pm 0.00\mathrm{E}{+}00$ \\
-10 & $-1.03\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00$ & $-1.03\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00$ & $-1.03\mathrm{E}{-}04 \pm 1.36\mathrm{E}{-}20$ & $-1.03\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00$ \\
-11 & $-3.71\mathrm{E}{+}00 \pm 4.85\mathrm{E}{+}00$ & $5.90\mathrm{E}{+}00 \pm 5.49\mathrm{E}{+}00$ & $5.25\mathrm{E}{+}01 \pm 1.23\mathrm{E}{+}02$ & $5.44\mathrm{E}{-}02 \pm 3.05\mathrm{E}{+}00$ \\
-12 & $1.60\mathrm{E}{+}01 \pm 9.57\mathrm{E}{+}00$ & $9.78\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $3.99\mathrm{E}{+}00 \pm 2.18\mathrm{E}{-}02$ & $1.01\mathrm{E}{+}01 \pm 4.05\mathrm{E}{+}00$ \\
-13 & $6.45\mathrm{E}{+}00 \pm 2.23\mathrm{E}{+}01$ & $1.17\mathrm{E}{-}28 \pm 2.34\mathrm{E}{-}28$ & $4.78\mathrm{E}{-}01 \pm 1.30\mathrm{E}{+}00$ & $4.67\mathrm{E}{-}29 \pm 1.58\mathrm{E}{-}28$ \\
-14 & $1.42\mathrm{E}{+}00 \pm 2.41\mathrm{E}{-}02$ & $1.42\mathrm{E}{+}00 \pm 2.36\mathrm{E}{-}02$ & $1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $1.47\mathrm{E}{+}00 \pm 4.05\mathrm{E}{-}02$ \\
-15 & $6.63\mathrm{E}{+}00 \pm 1.54\mathrm{E}{+}00$ & $-3.93\mathrm{E}{+}00 \pm 1.18\mathrm{E}{-}05$ & $2.36\mathrm{E}{+}00 \pm 1.41\mathrm{E}{-}06$ & $-3.42\mathrm{E}{+}00 \pm 1.15\mathrm{E}{+}00$ \\
-16 & $2.83\mathrm{E}{+}01 \pm 6.56\mathrm{E}{+}00$ & $2.10\mathrm{E}{+}01 \pm 3.69\mathrm{E}{+}00$ & $0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $2.32\mathrm{E}{+}01 \pm 3.47\mathrm{E}{+}00$ \\
-17 & $3.10\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ & $3.35\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ & $3.19\mathrm{E}{+}01 \pm 7.89\mathrm{E}{-}01$ & $3.35\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ \\
-18 & $3.71\mathrm{E}{+}01 \pm 1.87\mathrm{E}{+}00$ & $3.65\mathrm{E}{+}01 \pm 1.96\mathrm{E}{-}05$ & $8.00\mathrm{E}{+}03 \pm 2.49\mathrm{E}{+}03$ & $3.65\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ \\
-19 & $4.27\mathrm{E}{+}04 \pm 0.00\mathrm{E}{+}00$ & $4.27\mathrm{E}{+}04 \pm 0.00\mathrm{E}{+}00$ & $4.28\mathrm{E}{+}04 \pm 7.28\mathrm{E}{-}12$ & $4.27\mathrm{E}{+}04 \pm 0.00\mathrm{E}{+}00$ \\
-20 & $1.69\mathrm{E}{+}00 \pm 4.53\mathrm{E}{-}01$ & $1.33\mathrm{E}{+}00 \pm 2.46\mathrm{E}{-}01$ & $1.85\mathrm{E}{+}00 \pm 2.82\mathrm{E}{-}01$ & $2.43\mathrm{E}{+}00 \pm 6.99\mathrm{E}{-}01$ \\
-21 & $1.17\mathrm{E}{+}01 \pm 7.98\mathrm{E}{+}00$ & $2.39\mathrm{E}{+}01 \pm 7.92\mathrm{E}{+}00$ & $9.28\mathrm{E}{+}00 \pm 8.34\mathrm{E}{+}00$ & $2.47\mathrm{E}{+}01 \pm 1.54\mathrm{E}{+}01$ \\
-22 & $2.29\mathrm{E}{+}01 \pm 4.37\mathrm{E}{+}01$ & $5.61\mathrm{E}{-}26 \pm 3.84\mathrm{E}{-}26$ & $2.56\mathrm{E}{+}01 \pm 4.84\mathrm{E}{+}01$ & $2.85\mathrm{E}{-}26 \pm 6.52\mathrm{E}{-}27$ \\
-23 & $1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ & $1.45\mathrm{E}{+}00 \pm 4.34\mathrm{E}{-}02$ & $1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00$ \\
-24 & $7.01\mathrm{E}{+}00 \pm 1.60\mathrm{E}{+}00$ & $-3.93\mathrm{E}{+}00 \pm 4.44\mathrm{E}{-}16$ & $2.36\mathrm{E}{+}00 \pm 9.80\mathrm{E}{-}08$ & $-3.93\mathrm{E}{+}00 \pm 4.44\mathrm{E}{-}16$ \\
-25 & $4.03\mathrm{E}{+}01 \pm 9.74\mathrm{E}{+}00$ & $2.36\mathrm{E}{+}01 \pm 3.69\mathrm{E}{+}00$ & $2.51\mathrm{E}{-}01 \pm 1.23\mathrm{E}{+}00$ & $2.46\mathrm{E}{+}01 \pm 3.10\mathrm{E}{+}00$ \\
-26 & $3.10\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ & $3.30\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ & $3.26\mathrm{E}{+}01 \pm 8.09\mathrm{E}{-}01$ & $3.30\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ \\
-27 & $3.65\mathrm{E}{+}01 \pm 1.35\mathrm{E}{-}03$ & $3.65\mathrm{E}{+}01 \pm 8.00\mathrm{E}{-}05$ & $1.46\mathrm{E}{+}04 \pm 5.11\mathrm{E}{+}03$ & $3.65\mathrm{E}{+}01 \pm 2.71\mathrm{E}{-}05$ \\
-28 & $4.28\mathrm{E}{+}04 \pm 1.66\mathrm{E}{+}01$ & $4.29\mathrm{E}{+}04 \pm 1.10\mathrm{E}{+}01$ & $4.30\mathrm{E}{+}04 \pm 1.47\mathrm{E}{+}01$ & $4.29\mathrm{E}{+}04 \pm 7.28\mathrm{E}{-}12$ \\
+1  & $5.99\mathrm{E}{-}29 \pm 3.21\mathrm{E}{-}29$ & $3.27\mathrm{E}{-}30 \pm 4.75\mathrm{E}{-}30$ & $1.57\mathrm{E}{-}28 \pm 9.70\mathrm{E}{-}29$ & $\bm{1.26\mathrm{E}{-}31 \pm 6.18\mathrm{E}{-}31}$ \\
+2  & $5.16\mathrm{E}{-}29 \pm 2.64\mathrm{E}{-}29$ & $3.74\mathrm{E}{-}30 \pm 5.62\mathrm{E}{-}30$ & $1.31\mathrm{E}{-}28 \pm 7.83\mathrm{E}{-}29$ & $\bm{7.24\mathrm{E}{-}31 \pm 2.42\mathrm{E}{-}30}$ \\
+3  & $3.33\mathrm{E}{+}02 \pm 1.96\mathrm{E}{+}02$ & $2.56\mathrm{E}{+}02 \pm 7.36\mathrm{E}{+}01$ & $\bm{9.22\mathrm{E}{+}01 \pm 5.54\mathrm{E}{+}01}$ & $5.37\mathrm{E}{+}02 \pm 1.07\mathrm{E}{+}02$ \\
+4  & $8.98\mathrm{E}{+}01 \pm 1.36\mathrm{E}{+}01$ & $1.54\mathrm{E}{+}01 \pm 1.42\mathrm{E}{+}00$ & $\bm{6.51\mathrm{E}{+}00 \pm 6.78\mathrm{E}{+}00}$ & $4.84\mathrm{E}{+}01 \pm 8.86\mathrm{E}{+}00$ \\
+5  & $4.73\mathrm{E}{-}29 \pm 1.10\mathrm{E}{-}28$ & $\bm{0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $1.17\mathrm{E}{-}28 \pm 4.17\mathrm{E}{-}28$ & $\bm{0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ \\
+6  & $2.63\mathrm{E}{+}00 \pm 1.37\mathrm{E}{+}00$ & $\bm{0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $\bm{0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $2.87\mathrm{E}{+}00 \pm 1.41\mathrm{E}{+}01$ \\
+7  & $-8.26\mathrm{E}{+}02 \pm 1.58\mathrm{E}{+}02$ & $\bm{-1.39\mathrm{E}{+}03 \pm 6.80\mathrm{E}{+}02}$ & $-6.73\mathrm{E}{+}02 \pm 1.49\mathrm{E}{+}02$ & $-8.28\mathrm{E}{+}02 \pm 1.80\mathrm{E}{+}02$ \\
+8  & $\bm{-2.84\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00}$ & $\bm{-2.84\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00}$ & $\bm{-2.84\mathrm{E}{-}04 \pm 5.85\mathrm{E}{-}12}$ & $\bm{-2.84\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00}$ \\
+9  & $\bm{-2.67\mathrm{E}{-}03 \pm 0.00\mathrm{E}{+}00}$ & $\bm{-2.67\mathrm{E}{-}03 \pm 0.00\mathrm{E}{+}00}$ & $\bm{-2.67\mathrm{E}{-}03 \pm 4.34\mathrm{E}{-}19}$ & $\bm{-2.67\mathrm{E}{-}03 \pm 0.00\mathrm{E}{+}00}$ \\
+10 & $\bm{-1.03\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00}$ & $\bm{-1.03\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00}$ & $\bm{-1.03\mathrm{E}{-}04 \pm 1.36\mathrm{E}{-}20}$ & $\bm{-1.03\mathrm{E}{-}04 \pm 0.00\mathrm{E}{+}00}$ \\
+11 & $\bm{-3.71\mathrm{E}{+}00 \pm 4.85\mathrm{E}{+}00}$ & $9.04\mathrm{E}{+}00 \pm 3.65\mathrm{E}{+}00$ & $5.25\mathrm{E}{+}01 \pm 1.23\mathrm{E}{+}02$ & $5.44\mathrm{E}{-}02 \pm 3.05\mathrm{E}{+}00$ \\
+12 & $1.60\mathrm{E}{+}01 \pm 9.57\mathrm{E}{+}00$ & $9.54\mathrm{E}{+}00 \pm 1.14\mathrm{E}{+}00$ & $\bm{3.99\mathrm{E}{+}00 \pm 2.18\mathrm{E}{-}02}$ & $1.01\mathrm{E}{+}01 \pm 4.05\mathrm{E}{+}00$ \\
+13 & $6.45\mathrm{E}{+}00 \pm 2.23\mathrm{E}{+}01$ & $9.34\mathrm{E}{-}29 \pm 2.14\mathrm{E}{-}28$ & $4.78\mathrm{E}{-}01 \pm 1.30\mathrm{E}{+}00$ & $\bm{4.67\mathrm{E}{-}29 \pm 1.58\mathrm{E}{-}28}$ \\
+14 & $1.42\mathrm{E}{+}00 \pm 2.41\mathrm{E}{-}02$ & $\bm{1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $\bm{1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $1.47\mathrm{E}{+}00 \pm 4.05\mathrm{E}{-}02$ \\
+15 & $6.63\mathrm{E}{+}00 \pm 1.54\mathrm{E}{+}00$ & $\bm{-3.93\mathrm{E}{+}00 \pm 4.44\mathrm{E}{-}16}$ & $2.36\mathrm{E}{+}00 \pm 1.41\mathrm{E}{-}06$ & $-3.42\mathrm{E}{+}00 \pm 1.15\mathrm{E}{+}00$ \\
+16 & $2.83\mathrm{E}{+}01 \pm 6.56\mathrm{E}{+}00$ & $1.99\mathrm{E}{+}01 \pm 4.09\mathrm{E}{+}00$ & $\bm{0.00\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $2.32\mathrm{E}{+}01 \pm 3.47\mathrm{E}{+}00$ \\
+17 & $\bm{3.10\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00}$ & $3.35\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ & $3.19\mathrm{E}{+}01 \pm 7.89\mathrm{E}{-}01$ & $3.35\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ \\
+18 & $3.71\mathrm{E}{+}01 \pm 1.87\mathrm{E}{+}00$ & $\bm{3.65\mathrm{E}{+}01 \pm 1.96\mathrm{E}{-}05}$ & $8.00\mathrm{E}{+}03 \pm 2.49\mathrm{E}{+}03$ & $\bm{3.65\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00}$ \\
+19 & $\bm{4.27\mathrm{E}{+}04 \pm 0.00\mathrm{E}{+}00}$ & $\bm{4.27\mathrm{E}{+}04 \pm 0.00\mathrm{E}{+}00}$ & $4.28\mathrm{E}{+}04 \pm 7.28\mathrm{E}{-}12$ & $\bm{4.27\mathrm{E}{+}04 \pm 0.00\mathrm{E}{+}00}$ \\
+20 & $1.69\mathrm{E}{+}00 \pm 4.53\mathrm{E}{-}01$ & $\bm{1.26\mathrm{E}{+}00 \pm 2.11\mathrm{E}{-}01}$ & $1.85\mathrm{E}{+}00 \pm 2.82\mathrm{E}{-}01$ & $2.43\mathrm{E}{+}00 \pm 6.99\mathrm{E}{-}01$ \\
+21 & $1.17\mathrm{E}{+}01 \pm 7.98\mathrm{E}{+}00$ & $2.16\mathrm{E}{+}01 \pm 8.90\mathrm{E}{+}00$ & $\bm{9.28\mathrm{E}{+}00 \pm 8.34\mathrm{E}{+}00}$ & $2.47\mathrm{E}{+}01 \pm 1.54\mathrm{E}{+}01$ \\
+22 & $2.29\mathrm{E}{+}01 \pm 4.37\mathrm{E}{+}01$ & $3.75\mathrm{E}{-}26 \pm 1.49\mathrm{E}{-}26$ & $2.56\mathrm{E}{+}01 \pm 4.84\mathrm{E}{+}01$ & $\bm{2.85\mathrm{E}{-}26 \pm 6.52\mathrm{E}{-}27}$ \\
+23 & $\bm{1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $\bm{1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ & $1.45\mathrm{E}{+}00 \pm 4.34\mathrm{E}{-}02$ & $\bm{1.41\mathrm{E}{+}00 \pm 0.00\mathrm{E}{+}00}$ \\
+24 & $7.01\mathrm{E}{+}00 \pm 1.60\mathrm{E}{+}00$ & $\bm{-3.93\mathrm{E}{+}00 \pm 4.44\mathrm{E}{-}16}$ & $2.36\mathrm{E}{+}00 \pm 9.80\mathrm{E}{-}08$ & $\bm{-3.93\mathrm{E}{+}00 \pm 4.44\mathrm{E}{-}16}$ \\
+25 & $4.03\mathrm{E}{+}01 \pm 9.74\mathrm{E}{+}00$ & $2.25\mathrm{E}{+}01 \pm 3.00\mathrm{E}{+}00$ & $\bm{2.51\mathrm{E}{-}01 \pm 1.23\mathrm{E}{+}00}$ & $2.46\mathrm{E}{+}01 \pm 3.10\mathrm{E}{+}00$ \\
+26 & $\bm{3.10\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00}$ & $3.30\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ & $3.26\mathrm{E}{+}01 \pm 8.09\mathrm{E}{-}01$ & $3.30\mathrm{E}{+}01 \pm 0.00\mathrm{E}{+}00$ \\
+27 & $\bm{3.65\mathrm{E}{+}01 \pm 1.35\mathrm{E}{-}03}$ & $\bm{3.65\mathrm{E}{+}01 \pm 8.06\mathrm{E}{-}05}$ & $1.46\mathrm{E}{+}04 \pm 5.11\mathrm{E}{+}03$ & $\bm{3.65\mathrm{E}{+}01 \pm 2.71\mathrm{E}{-}05}$ \\
+28 & $\bm{4.28\mathrm{E}{+}04 \pm 1.66\mathrm{E}{+}01}$ & $4.29\mathrm{E}{+}04 \pm 1.14\mathrm{E}{+}01$ & $4.30\mathrm{E}{+}04 \pm 1.47\mathrm{E}{+}01$ & $4.29\mathrm{E}{+}04 \pm 7.28\mathrm{E}{-}12$ \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -262,7 +286,7 @@ Table~\ref{tab:ttt} reports time-to-target (TTT) for each algorithm. TTT is the 
 
 \begin{table*}[!t]
 \centering
-\caption{Time-to-target (TTT) on the 28 CEC 2025 CSOP functions, $D = 30$, 25 runs per function. RDEx, UDE-III, \& CL-SRDE values are taken from \cite{tao2026rdex}. $2001$ means the target was never reached.}
+\caption{Time-to-target (TTT) on the 28 CEC 2025 CSOP functions, $D = 30$, 25 runs per function. Sources: RDEx-CASK from \cite{cask_results}; RDEx (=RDEx-CSOP), UDE-III, \& CL-SRDE values taken from \cite{tao2026rdex}. $2001$ means the target was never reached.}
 \label{tab:ttt}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -270,40 +294,130 @@ Table~\ref{tab:ttt} reports time-to-target (TTT) for each algorithm. TTT is the 
 \toprule
 F & RDEx-CASK Mean$\pm$SD & RDEx Mean$\pm$SD & UDE-III Mean$\pm$SD & CL-SRDE Mean$\pm$SD \\
 \midrule
-1  & $330.6 \pm 15.0$    & $1382.6 \pm 548.3$ & $1979.6 \pm 105.0$ & $1327.4 \pm 137.8$ \\
-2  & $332.0 \pm 17.4$    & $1298.5 \pm 527.0$ & $1960.7 \pm 138.2$ & $1399.3 \pm 222.3$ \\
-3  & $1640.1 \pm 486.0$  & $1813.9 \pm 272.3$ & $394.8  \pm 162.1$ & $2001.0 \pm 0.0$   \\
-4  & $1059.3 \pm 924.0$  & $1569.9 \pm 496.5$ & $837.6  \pm 50.4$  & $2001.0 \pm 0.0$   \\
-5  & $524.5 \pm 30.6$    & $986.6  \pm 13.9$  & $1476.4 \pm 466.1$ & $1395.2 \pm 14.8$  \\
-6  & $33.5 \pm 27.1$     & $807.2  \pm 521.1$ & $746.3  \pm 37.6$  & $991.0  \pm 206.4$ \\
-7  & $1167.6 \pm 841.9$  & $1130.0 \pm 739.4$ & $1906.6 \pm 320.2$ & $1606.0 \pm 480.3$ \\
-8  & $513.4 \pm 32.0$    & $769.6  \pm 11.7$  & $2001.0 \pm 0.0$   & $1221.0 \pm 7.6$   \\
-9  & $743.1 \pm 139.9$   & $56.2   \pm 12.3$  & $1322.4 \pm 905.8$ & $111.6  \pm 26.5$  \\
-10 & $587.3 \pm 135.0$   & $793.3  \pm 11.6$  & $2001.0 \pm 0.0$   & $1231.7 \pm 9.0$   \\
-11 & $1394.3 \pm 345.0$  & $1.5    \pm 0.6$   & $1.7    \pm 0.8$   & $1.9    \pm 1.1$   \\
-12 & $1189.6 \pm 717.4$  & $580.4  \pm 150.6$ & $269.9  \pm 33.2$  & $843.6  \pm 257.9$ \\
-13 & $666.6 \pm 404.1$   & $1216.1 \pm 392.6$ & $1672.0 \pm 383.1$ & $1484.0 \pm 152.8$ \\
-14 & $394.0 \pm 516.5$   & $541.9  \pm 431.8$ & $1036.1 \pm 2.7$   & $1618.0 \pm 600.7$ \\
-15 & $1340.1 \pm 730.4$  & $70.0   \pm 13.2$  & $2001.0 \pm 0.0$   & $148.7  \pm 25.8$  \\
-16 & $1079.8 \pm 861.1$  & $1468.6 \pm 667.3$ & $131.8  \pm 71.2$  & $1926.3 \pm 212.1$ \\
-17 & $34.5 \pm 4.1$      & $1232.2 \pm 869.8$ & $212.0  \pm 197.6$ & $1603.7 \pm 643.4$ \\
-18 & $1174.4 \pm 427.0$  & $201.6  \pm 6.0$   & $2001.0 \pm 0.0$   & $307.7  \pm 7.1$   \\
-19 & $560.2 \pm 235.6$   & $290.6  \pm 40.3$  & $311.4  \pm 49.3$  & $560.7  \pm 254.5$ \\
-20 & $1471.4 \pm 529.6$  & $1084.2 \pm 472.0$ & $1965.8 \pm 76.0$  & $1922.5 \pm 215.4$ \\
-21 & $1130.7 \pm 744.1$  & $498.9  \pm 341.1$ & $464.7  \pm 455.1$ & $800.5  \pm 556.8$ \\
-22 & $1087.9 \pm 532.1$  & $1568.4 \pm 415.9$ & $2001.0 \pm 0.0$   & $1560.4 \pm 130.4$ \\
-23 & $337.6 \pm 55.2$    & $452.5  \pm 30.1$  & $1851.7 \pm 202.0$ & $708.2  \pm 13.4$  \\
-24 & $1201.2 \pm 806.9$  & $68.6   \pm 13.6$  & $2001.0 \pm 0.0$   & $141.8  \pm 21.9$  \\
-25 & $1048.6 \pm 809.3$  & $1459.0 \pm 727.9$ & $515.5  \pm 424.5$ & $1857.0 \pm 304.0$ \\
-26 & $44.3 \pm 4.5$      & $1206.8 \pm 806.3$ & $826.8  \pm 873.9$ & $1772.2 \pm 460.9$ \\
-27 & $1028.7 \pm 295.0$  & $216.3  \pm 13.5$  & $2001.0 \pm 0.0$   & $324.0  \pm 7.7$   \\
-28 & $1478.8 \pm 553.9$  & $272.4  \pm 11.6$  & $2001.0 \pm 0.0$   & $459.6  \pm 21.2$  \\
+1  & $\bm{330.6 \pm 15.0}$    & $1332.6 \pm 546.2$ & $1979.6 \pm 105.0$ & $1327.4 \pm 137.8$ \\
+2  & $\bm{332.0 \pm 17.4}$    & $1251.2 \pm 514.8$ & $1960.7 \pm 138.2$ & $1399.3 \pm 222.3$ \\
+3  & $1640.1 \pm 486.0$  & $1575.3 \pm 541.4$ & $\bm{394.8  \pm 162.1}$ & $2001.0 \pm 0.0$   \\
+4  & $1059.3 \pm 924.0$  & $1607.4 \pm 529.8$ & $\bm{837.6  \pm 50.4}$  & $2001.0 \pm 0.0$   \\
+5  & $\bm{524.5 \pm 30.6}$    & $986.2  \pm 12.0$  & $1476.4 \pm 466.1$ & $1395.2 \pm 14.8$  \\
+6  & $\bm{33.5 \pm 27.1}$     & $577.4  \pm 10.3$  & $746.3  \pm 37.6$  & $991.0  \pm 206.4$ \\
+7  & $1167.6 \pm 841.9$  & $\bm{334.7  \pm 369.4}$ & $1906.6 \pm 320.2$ & $1606.0 \pm 480.3$ \\
+8  & $\bm{513.4 \pm 32.0}$    & $765.0  \pm 13.3$  & $2001.0 \pm 0.0$   & $1221.0 \pm 7.6$   \\
+9  & $743.1 \pm 139.9$   & $\bm{50.5   \pm 12.9}$  & $1322.4 \pm 905.8$ & $111.6  \pm 26.5$  \\
+10 & $\bm{587.3 \pm 135.0}$   & $793.0  \pm 12.9$  & $2001.0 \pm 0.0$   & $1231.7 \pm 9.0$   \\
+11 & $1394.3 \pm 345.0$  & $\bm{1.7    \pm 0.6}$   & $\bm{1.7    \pm 0.8}$   & $1.9    \pm 1.1$   \\
+12 & $1189.6 \pm 717.4$  & $574.1  \pm 258.7$ & $\bm{269.9  \pm 33.2}$  & $843.6  \pm 257.9$ \\
+13 & $\bm{666.6 \pm 404.1}$   & $1172.4 \pm 361.7$ & $1672.0 \pm 383.1$ & $1484.0 \pm 152.8$ \\
+14 & $\bm{394.0 \pm 516.5}$   & $421.9  \pm 55.6$  & $1036.1 \pm 2.7$   & $1618.0 \pm 600.7$ \\
+15 & $1340.1 \pm 730.4$  & $\bm{59.9   \pm 13.7}$  & $2001.0 \pm 0.0$   & $148.7  \pm 25.8$  \\
+16 & $1079.8 \pm 861.1$  & $1243.6 \pm 732.8$ & $\bm{131.8  \pm 71.2}$  & $1926.3 \pm 212.1$ \\
+17 & $\bm{34.5 \pm 4.1}$      & $842.0  \pm 807.3$ & $212.0  \pm 197.6$ & $1603.7 \pm 643.4$ \\
+18 & $1174.4 \pm 427.0$  & $\bm{200.1  \pm 8.3}$   & $2001.0 \pm 0.0$   & $307.7  \pm 7.1$   \\
+19 & $560.2 \pm 235.6$   & $\bm{280.2  \pm 25.9}$  & $311.4  \pm 49.3$  & $560.7  \pm 254.5$ \\
+20 & $1471.4 \pm 529.6$  & $\bm{1078.6 \pm 444.5}$ & $1965.8 \pm 76.0$  & $1922.5 \pm 215.4$ \\
+21 & $1130.7 \pm 744.1$  & $\bm{396.5  \pm 173.5}$ & $464.7  \pm 455.1$ & $800.5  \pm 556.8$ \\
+22 & $\bm{1087.9 \pm 532.1}$  & $1525.7 \pm 421.6$ & $2001.0 \pm 0.0$   & $1560.4 \pm 130.4$ \\
+23 & $\bm{337.6 \pm 55.2}$    & $433.6  \pm 28.0$  & $1851.7 \pm 202.0$ & $708.2  \pm 13.4$  \\
+24 & $1201.2 \pm 806.9$  & $\bm{60.7   \pm 14.2}$  & $2001.0 \pm 0.0$   & $141.8  \pm 21.9$  \\
+25 & $1048.6 \pm 809.3$  & $1315.1 \pm 782.3$ & $\bm{515.5  \pm 424.5}$ & $1857.0 \pm 304.0$ \\
+26 & $\bm{44.3 \pm 4.5}$      & $1102.0 \pm 803.1$ & $826.8  \pm 873.9$ & $1772.2 \pm 460.9$ \\
+27 & $1028.7 \pm 295.0$  & $\bm{218.8  \pm 34.6}$  & $2001.0 \pm 0.0$   & $324.0  \pm 7.7$   \\
+28 & $1478.8 \pm 553.9$  & $\bm{263.0  \pm 12.8}$  & $2001.0 \pm 0.0$   & $459.6  \pm 21.2$  \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
+\subsection{Joint U-score}
+Table~\ref{tab:uscore} reports the joint trial-based dominance U-score (CEC 2026 CSOP framework, Section~1 of the official TR; Price 2022 \cite{price2022trialbaseddominanceenablesnonparametric}) over all four algorithms across 28 problems with 25 runs each (100 trials per problem). Per problem, Accuracy A and Speed S are each computed by $mn(mn{-}1)/2$ pairwise comparisons among the combined 100 trials. Accuracy: feasible vs feasible $\to$ lower Min\_EV wins; infeasible vs infeasible $\to$ lower LCV wins; mixed $\to$ feasible wins. Speed: stagnation-point comparison at the worse of the two final values (Min\_EV or LCV); faster trial wins. Ties split 0.5/0.5. Total = A + S per algo. Per-problem rank is by Total; Avg rank is averaged over 28 problems.
+
+\begin{table}[!t]
+\centering
+\caption{Joint U-score over CSOP problems, $D = 30$, 25 runs. Sources: RDEx-CASK from \cite{cask_results}; RDEx (RDEx-CSOP) raw runs from \cite{cec2025_data} (\texttt{COPs/RDEx}); UDE-III \& CL-SRDE raw runs from \cite{cec2024_data} (\texttt{Results-CSOPs}).}
+\label{tab:uscore}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\toprule
+Algorithm & Total & Speed & Accuracy & Avg rank \\
+\midrule
+\textbf{RDEx-CASK} & \textbf{94044.5} & \textbf{50472.0} & \textbf{43572.5} & \textbf{1.46} \\
+RDEx     & 78870.0 & 42647.5 & 36222.5 & 2.14 \\
+UDE-III  & 59704.0 & 27826.5 & 31877.5 & 2.89 \\
+CL-SRDE  & 44581.5 & 17654.0 & 26927.5 & 3.50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Per-Function U-score}
+Table~\ref{tab:uscore-perfunc} reports per-function Accuracy, Speed, \& U-score (= A + S) for all four algorithms under the CEC 2026 pairwise framework.
+
+\begin{table*}[!t]
+\centering
+\caption{Per-function U-score (CEC 2026 pairwise dominance) over 28 CEC CSOP problems, $D=30$, 25 runs. Acc, Spd are pairwise win counts; U = Acc + Spd. Sources: RDEx-CASK from \cite{cask_results}; RDEx (RDEx-CSOP) from \cite{cec2025_data}; UDE-III \& CL-SRDE from \cite{cec2024_data}.}
+\label{tab:uscore-perfunc}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{r ccc ccc ccc ccc}
+\toprule
+ & \multicolumn{3}{c}{RDEx-CASK} & \multicolumn{3}{c}{RDEx} & \multicolumn{3}{c}{UDE-III} & \multicolumn{3}{c}{CL-SRDE} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}\cmidrule(lr){11-13}
+F & Acc & Spd & U & Acc & Spd & U & Acc & Spd & U & Acc & Spd & U \\
+\midrule
+1  & \textbf{1687.5} & \textbf{2175.0} & \textbf{3862.5} & 1087.5 & 1550.0 & 2637.5 & 1087.5 & 925.0 & 2012.5 & 1087.5 & 300.0 & 1387.5 \\
+2  & \textbf{1687.5} & \textbf{2175.0} & \textbf{3862.5} & 1087.5 & 1550.0 & 2637.5 & 1087.5 & 925.0 & 2012.5 & 1087.5 & 300.0 & 1387.5 \\
+3  & 1621.0 & 1620.0 & 3241.0 & 1148.0 & 1148.0 & 2296.0 & \textbf{1839.0} & \textbf{1839.0} & \textbf{3678.0} & 342.0 & 343.0 & 685.0 \\
+4  & 1200.0 & \textbf{2171.5} & 3371.5 & 1250.0 & 945.5 & 2195.5 & \textbf{1875.0} & 1523.0 & \textbf{3398.0} & 625.0 & 310.0 & 935.0 \\
+5  & \textbf{1687.5} & \textbf{2175.0} & \textbf{3862.5} & 1087.5 & 1248.0 & 2335.5 & 1087.5 & 1227.0 & 2314.5 & 1087.5 & 300.0 & 1387.5 \\
+6  & \textbf{1237.5} & 1551.5 & 2789.0 & \textbf{1237.5} & \textbf{1800.0} & \textbf{3037.5} & \textbf{1237.5} & 1115.5 & 2353.0 & \textbf{1237.5} & 483.0 & 1720.5 \\
+7  & 787.0 & 1378.5 & 2165.5 & \textbf{1960.0} & \textbf{1788.0} & \textbf{3748.0} & 912.0 & 986.0 & 1898.0 & 1291.0 & 797.5 & 2088.5 \\
+8  & 787.5 & \textbf{2175.0} & \textbf{2962.5} & \textbf{1387.5} & 1550.0 & 2937.5 & \textbf{1387.5} & 300.0 & 1687.5 & \textbf{1387.5} & 925.0 & 2312.5 \\
+9  & \textbf{2012.5} & \textbf{1949.5} & \textbf{3962.0} & 1712.5 & 1702.5 & 3415.0 & 612.5 & 478.5 & 1091.0 & 612.5 & 819.5 & 1432.0 \\
+10 & 1112.5 & \textbf{2050.0} & 3162.5 & \textbf{2012.5} & 1675.0 & \textbf{3687.5} & 912.5 & 300.0 & 1212.5 & 912.5 & 925.0 & 1837.5 \\
+11 & 1056.0 & \textbf{1542.5} & 2598.5 & \textbf{1950.0} & 1274.5 & \textbf{3224.5} & 618.0 & 807.5 & 1425.5 & 1326.0 & 1325.5 & 2651.5 \\
+12 & 1296.0 & 1386.0 & 2682.0 & 573.0 & 1116.0 & 1689.0 & \textbf{1752.0} & \textbf{1767.0} & \textbf{3519.0} & 1329.0 & 681.0 & 2010.0 \\
+13 & \textbf{1668.0} & \textbf{2100.0} & \textbf{3768.0} & 1137.5 & 1413.5 & 2551.0 & 1007.0 & 1061.5 & 2068.5 & 1137.5 & 375.0 & 1512.5 \\
+14 & 1532.0 & \textbf{2113.0} & \textbf{3645.0} & 825.0 & 1575.0 & 2400.0 & \textbf{1875.0} & 675.0 & 2550.0 & 718.0 & 587.0 & 1305.0 \\
+15 & 1344.0 & 1458.0 & 2802.0 & \textbf{1875.0} & \textbf{1870.5} & \textbf{3745.5} & 1250.0 & 1229.5 & 2479.5 & 481.0 & 392.0 & 873.0 \\
+16 & 1408.0 & 1564.5 & 2972.5 & 1066.0 & 1105.0 & 2171.0 & \textbf{1875.0} & \textbf{1875.0} & \textbf{3750.0} & 601.0 & 405.5 & 1006.5 \\
+17 & \textbf{2175.0} & \textbf{1650.0} & \textbf{3825.0} & 662.5 & 1550.0 & 2212.5 & 1450.0 & 1117.0 & 2567.0 & 662.5 & 633.0 & 1295.5 \\
+18 & \textbf{1893.5} & \textbf{2073.5} & \textbf{3967.0} & 1637.5 & 1624.0 & 3261.5 & 300.0 & 462.5 & 762.5 & 1119.0 & 790.0 & 1909.0 \\
+19 & \textbf{2175.0} & 925.0 & \textbf{3100.0} & 1550.0 & 1550.0 & \textbf{3100.0} & 925.0 & \textbf{2175.0} & \textbf{3100.0} & 300.0 & 300.0 & 600.0 \\
+20 & 1705.0 & \textbf{1887.0} & \textbf{3592.0} & \textbf{1813.0} & 1774.0 & 3587.0 & 1007.0 & 870.0 & 1877.0 & 425.0 & 419.0 & 844.0 \\
+21 & \textbf{1887.0} & \textbf{1909.0} & \textbf{3796.0} & 1002.0 & 1076.0 & 2078.0 & 1494.0 & 1452.0 & 2946.0 & 567.0 & 513.0 & 1080.0 \\
+22 & \textbf{1658.0} & \textbf{1923.5} & \textbf{3581.5} & 1300.0 & 1669.5 & 2969.5 & 692.0 & 357.0 & 1049.0 & 1300.0 & 1000.0 & 2300.0 \\
+23 & 1518.5 & \textbf{2165.0} & \textbf{3683.5} & 762.5 & 1560.0 & 2322.5 & 794.0 & 300.0 & 1094.0 & \textbf{1875.0} & 925.0 & 2800.0 \\
+24 & 1200.0 & 1556.5 & 2756.5 & \textbf{1875.0} & \textbf{1873.0} & \textbf{3748.0} & 1250.0 & 1159.5 & 2409.5 & 625.0 & 361.0 & 986.0 \\
+25 & 1243.0 & 1454.0 & 2697.0 & 1123.0 & 1468.5 & 2591.5 & \textbf{1875.0} & \textbf{1527.5} & \textbf{3402.5} & 709.0 & 500.0 & 1209.0 \\
+26 & \textbf{2175.0} & \textbf{2025.0} & \textbf{4200.0} & 850.0 & 1550.0 & 2400.0 & 1075.0 & 572.5 & 1647.5 & 850.0 & 802.5 & 1652.5 \\
+27 & 1643.0 & \textbf{2143.5} & \textbf{3786.5} & 1175.0 & 1491.0 & 2666.0 & 300.0 & 499.0 & 799.0 & \textbf{1832.0} & 816.5 & 2648.5 \\
+28 & \textbf{2175.0} & 1175.0 & \textbf{3350.0} & 1075.0 & \textbf{2150.0} & 3225.0 & 300.0 & 300.0 & 600.0 & 1400.0 & 1325.0 & 2725.0 \\
+\midrule
+Sum & \textbf{43572.5} & \textbf{50472.0} & \textbf{94044.5} & 36222.5 & 42647.5 & 78870.0 & 31877.5 & 27826.5 & 59704.0 & 26927.5 & 17654.0 & 44581.5 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Head-to-Head Summary}
+Table~\ref{tab:h2h} reports per-function win/tie/loss counts of RDEx-CASK against each baseline on $Q_p$ \& TTT, derived by mean comparison from Tables~\ref{tab:qp} \& \ref{tab:ttt}. Lower is better for both metrics.
+
+\begin{table}[!t]
+\centering
+\caption{Head-to-head (better/similar/worse) of RDEx-CASK over 28 functions, derived from Tables~\ref{tab:qp} \& \ref{tab:ttt} (sources: \cite{cask_results, tao2026rdex}).}
+\label{tab:h2h}
+\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lcc}
+\toprule
+Comparison & Final $Q_p$ (B/S/W) & TTT (B/S/W) \\
+\midrule
+RDEx-CASK vs RDEx     & 5 / 6 / 17 & 15 / 0 / 13 \\
+RDEx-CASK vs UDE-III  & 14 / 3 / 11 & 20 / 0 / 8 \\
+RDEx-CASK vs CL-SRDE  & 9 / 6 / 13 & 18 / 1 / 9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Aggregate Behaviour}
-RDEx-CASK matches RDEx within noise on the easy unimodal problems (F1, F2, F8, F9, F10, F19, F23) \& remains feasible on all 28 problems where any tested algorithm reaches feasibility. It improves $Q_p$ over RDEx on F7, F11, F17, F21, F26, \&F28, \&trails RDEx on F4, F12, F13, F15, F18, F22, F24, \& F25, where the global-best pull \&the higher crossover rate cost some final accuracy on multimodal landscapes. UDE-III leads on F3, F4, F12, F16, F25 because of its dual-population strategy adaptation, but loses heavily on F18, F19, F22, F27, F28 where its replacement-style stagnation strategy mishandles tight feasible regions. CL-SRDE performs best on F1, F2, F5, F11, F22 owing to its parameter-curve adaptation but trails on F3, F4, F18, F25, F28.
+RDEx-CASK matches RDEx within noise on the easy unimodal problems (F1, F2, F8, F9, F10, F19, F23, F27) \& remains feasible on all 28 problems where any tested algorithm reaches feasibility. It improves $Q_p$ over RDEx on F11, F17, F21, F26, \& F28, \& trails RDEx on F4, F7, F12, F13, F15, F18, F22, F24, \& F25, where the global-best pull \& the higher crossover rate cost some final accuracy on multimodal landscapes. UDE-III leads on F3, F4, F12, F16, F25 because of its dual-population strategy adaptation, but loses heavily on F18, F19, F22, F27, F28 where its replacement-style stagnation strategy mishandles tight feasible regions. CL-SRDE performs best on F1, F2, F5, F11, F22 owing to its parameter-curve adaptation but trails on F3, F4, F18, F25, F28.
 
 Our observation is consistent with RDEx-CASK trading small amount of final-objective accuracy for faster threshold attainment, controlled by SR-gated crossover saturation \& the per-individual stagnation kick.
 
